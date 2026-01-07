@@ -1,0 +1,13 @@
+# Root gitignore for Krishi AI
+node_modules/
+venv/
+__pycache__/
+*.log
+dist/
+.DS_Store
+.idea/
+.vscode/
+.env
+.env.local
+zip_temp/
+krishi-ai-2.0.zip
