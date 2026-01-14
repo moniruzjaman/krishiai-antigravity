@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from app.models import *
 from app.database import supabase_client
 from app.services.gemini_service import gemini_service
+from app.services.local_ai_service import local_ai_service
 from typing import List
 import base64
 import logging
@@ -60,36 +61,46 @@ async def update_user(user_id: str, updates: UserUpdate):
 # Crop Analysis Routes
 @router.post("/analyze/crop", response_model=AnalysisResult)
 async def analyze_crop(request: CropAnalysisRequest):
-    """Analyze crop image for pests, diseases, or deficiencies"""
+    """Analyze crop image using Gemini AI"""
     try:
-        # Decode base64 image
+        logger.info(f"Analyzing crop image. Crop Family: {request.crop_family}, Query: {request.query}")
         image_data = base64.b64decode(request.image_base64)
-        
-        # Analyze with Gemini
         result = await gemini_service.analyze_crop_image(
             image_data=image_data,
             crop_family=request.crop_family,
             query=request.query,
-            lang="bn"
+            lang=request.lang
         )
+        logger.info(f"Analysis complete: {result['diagnosis']}")
         
-        # Save to database if user_id provided
         if request.user_id:
-            report_data = {
+            await supabase_client.save_analysis_report({
                 "user_id": request.user_id,
-                "type": "crop_analysis",
                 "diagnosis": result["diagnosis"],
                 "category": result["category"],
-                "confidence": result["confidence"],
-                "advisory": result["advisory"],
-                "full_report": result["full_text"]
-            }
-            await supabase_client.save_analysis_report(report_data)
-        
+                "advisory": result["advisory"]
+            })
+            
         return result
-        
     except Exception as e:
-        logger.error(f"Error analyzing crop: {e}")
+        logger.error(f"Error in Gemini analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze/local/crop", response_model=AnalysisResult)
+async def analyze_crop_local(request: CropAnalysisRequest):
+    """Analyze crop image using Local Vision Model"""
+    try:
+        image_data = base64.b64decode(request.image_base64)
+        result = await local_ai_service.analyze_image(
+            image_bytes=image_data,
+            query=request.query,
+            lang=request.lang,
+            weather=request.weather
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error in Local analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -205,6 +216,61 @@ async def search_info(request: AIQueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/ai/news")
+async def get_news(request: Dict[str, str]):
+    """Get agricultural news"""
+    try:
+        lang = request.get("lang", "bn")
+        news = await gemini_service.get_agri_news(lang)
+        return {"news": news}
+    except Exception as e:
+        logger.error(f"Error fetching news: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/biocontrol")
+async def get_biocontrol_advice(request: Dict[str, str]):
+    """Get biocontrol expert advice"""
+    try:
+        query = request.get("query", "")
+        advice = await gemini_service.get_biocontrol_expert_advice(query)
+        return {"text": advice}
+    except Exception as e:
+        logger.error(f"Error fetching biocontrol advice: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/pesticide/advice")
+async def get_pesticide_advice(request: Dict[str, str]):
+    """Get pesticide expert advice"""
+    try:
+        query = request.get("query", "")
+        lang = request.get("lang", "bn")
+        result = await gemini_service.get_pesticide_expert_advice(query, lang)
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching pesticide advice: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat")
+async def chat(request: Dict[str, Any]):
+    """Handle chat messages"""
+    try:
+        result = await gemini_service.chat(
+            history=request.get("history", []),
+            message=request.get("message", ""),
+            persona=request.get("persona", "General"),
+            role=request.get("role", "User"),
+            weather=request.get("weather"),
+            crops=request.get("crops")
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error in chat: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Saved Reports
 @router.post("/users/{user_id}/reports", response_model=SavedReportResponse)
 async def save_report(user_id: str, report: SavedReportCreate):
@@ -309,4 +375,61 @@ async def get_market_prices(location: Optional[str] = None):
         return prices
     except Exception as e:
         logger.error(f"Error fetching market prices: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+# Additional AI Services
+@router.post("/ai/speech")
+async def generate_speech(request: Dict[str, str]):
+    """Generate speech from text"""
+    try:
+        text = request.get("text", "")
+        audio_base64 = await gemini_service.generate_speech(text)
+        return {"audio_base64": audio_base64}
+    except Exception as e:
+        logger.error(f"Error generating speech: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/image")
+async def generate_image(request: Dict[str, str]):
+    """Generate image from prompt"""
+    try:
+        prompt = request.get("prompt", "")
+        image_url = await gemini_service.generate_image(prompt)
+        return {"image_url": image_url}
+    except Exception as e:
+        logger.error(f"Error generating image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze/precision/parameters")
+async def get_precision_parameters(request: Dict[str, Any]):
+    """Get parameters needed for deep audit"""
+    try:
+        result = await gemini_service.get_precision_parameters(
+            image_base64=request.get("image_base64"),
+            mime_type=request.get("mime_type"),
+            crop_family=request.get("crop_family"),
+            lang=request.get("lang", "bn")
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error getting precision parameters: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze/deep")
+async def perform_deep_audit(request: Dict[str, Any]):
+    """Perform deep scientific audit"""
+    try:
+        result = await gemini_service.perform_deep_audit(
+            image_base64=request.get("image_base64"),
+            mime_type=request.get("mime_type"),
+            crop_family=request.get("crop_family"),
+            dynamic_data=request.get("dynamic_data"),
+            lang=request.get("lang", "bn"),
+            weather=request.get("weather")
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error performing deep audit: {e}")
         raise HTTPException(status_code=500, detail=str(e))

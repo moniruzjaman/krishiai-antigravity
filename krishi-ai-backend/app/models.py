@@ -65,6 +65,8 @@ class CropAnalysisRequest(BaseModel):
     mime_type: str = Field(default="image/jpeg")
     crop_family: Optional[str] = None
     query: Optional[str] = None
+    lang: str = "bn"
+    weather: Optional[Dict[str, Any]] = None
     user_id: Optional[str] = None
 
 

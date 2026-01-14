@@ -176,6 +176,7 @@ docker run -p 8000:8000 --env-file .env krishi-ai-backend
 ```
 
 ### Cloud Platforms
+- **Heroku**: Push to GitHub and deploy using Procfile and runtime.txt
 - **Railway**: Connect GitHub repo and deploy
 - **Render**: Deploy as Web Service
 - **Google Cloud Run**: Deploy containerized app

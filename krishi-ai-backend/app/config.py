@@ -2,7 +2,7 @@
 Configuration management for Krishi AI Backend
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str
     
     # Google Gemini AI
+    # LLM Reasoning
     GEMINI_API_KEY: str
+    OPENAI_API_KEY: Optional[str] = None
     
     # Hugging Face
     HF_TOKEN: str
@@ -31,7 +33,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175"
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:4173,http://localhost:4174,http://localhost:4175"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

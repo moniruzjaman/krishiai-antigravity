@@ -9,6 +9,12 @@ supabase>=2.3.4
 # Google AI
 google-generativeai>=0.8.3
 
+# Local AI (Hugging Face)
+torch>=2.2.0
+transformers>=4.40.0
+einops>=0.7.0
+accelerate>=0.27.0
+
 # Image Processing
 Pillow>=10.0.0
 
@@ -24,3 +30,6 @@ requests>=2.31.0
 # Authentication
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+
+# LLM Reasoning
+openai>=1.12.0
