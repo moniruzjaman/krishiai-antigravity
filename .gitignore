@@ -1,13 +1,114 @@
-# Root gitignore for Krishi AI
+# ========================================
+# Krishi AI - Root .gitignore
+# ========================================
+
+# Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Python
 venv/
+.venv/
+env/
+ENV/
 __pycache__/
-*.log
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
 dist/
+build/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.vercel
+.output
+.next
+
+# IDE
 .DS_Store
 .idea/
 .vscode/
-.env
-.env.local
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Temporary files
+.tmp/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Generated files
+*.generated.ts
+*.generated.js
+
+# OS files
+Thumbs.db
+.DS_Store
+*.lnk
+
+# Deployment files (contain secrets)
+add_*_env.ps1
+show_env_vars.ps1
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
 zip_temp/
-krishi-ai-2.0.zip
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation builds
+docs/_build/
+
+# Cache
+.cache/
+*.cache
+.parcel-cache
+
+# Misc
+brain/
+.agent/
+.test/
+test.txt
+write_test.txt
+version.txt
+zai_test.ps1
+restart-dev.ps1

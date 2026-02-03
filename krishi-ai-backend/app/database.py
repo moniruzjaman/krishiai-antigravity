@@ -191,7 +191,23 @@ class SupabaseClient:
             query = self.client.table("market_prices").select("*")
             if location:
                 query = query.eq("location", location)
-            response = query.order("updated_at", desc=True).execute()
+            
+            # Use created_at if updated_at is missing (common in some Supabase versions/setups)
+            # Or just order by whatever is available.
+            try:
+                response = query.order("updated_at", desc=True).execute()
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "updated_at" in error_msg or "42703" in error_msg:
+                    logger.warning("updated_at column missing in market_prices, falling back to created_at")
+                    try:
+                        response = query.order("created_at", desc=True).execute()
+                    except Exception as e2:
+                        logger.warning("created_at column also missing, returning unordered results")
+                        response = query.execute()
+                else:
+                    raise e
+            
             return response.data if response.data else []
         except Exception as e:
             logger.error(f"Error fetching market prices: {e}")

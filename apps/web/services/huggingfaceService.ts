@@ -11,7 +11,7 @@ export const queryQwenVL = async (
 ): Promise<string | null> => {
   const HF_TOKEN = (process.env.HF_TOKEN && process.env.HF_TOKEN !== "undefined" && process.env.HF_TOKEN !== "null") 
     ? process.env.HF_TOKEN 
-    : "";
+    : ""; // Set HF_TOKEN environment variable
   
   try {
     const modelUrl = "https://api-inference.huggingface.co/models/Qwen/Qwen3-VL-8B-Instruct";
@@ -79,9 +79,9 @@ export const queryQwenVL = async (
  * References logic from CropNet datasets for pest surge and yield stress.
  */
 export const queryCropNetInsight = async (weatherData: any, lang: string = 'bn'): Promise<string | null> => {
-  const HF_TOKEN = (process.env.HF_TOKEN && process.env.HF_TOKEN !== "undefined" && process.env.HF_TOKEN !== "null") 
+const HF_TOKEN = (process.env.HF_TOKEN && process.env.HF_TOKEN !== "undefined" && process.env.HF_TOKEN !== "null") 
     ? process.env.HF_TOKEN 
-    : "";
+    : ""; // Set HF_TOKEN environment variable
 
   try {
     const modelUrl = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3";
@@ -122,9 +122,9 @@ export const queryCropNetInsight = async (weatherData: any, lang: string = 'bn')
 };
 
 export const classifyPlantDiseaseHF = async (base64Data: string): Promise<HFClassificationResult[] | null> => {
-  const HF_TOKEN = (process.env.HF_TOKEN && process.env.HF_TOKEN !== "undefined" && process.env.HF_TOKEN !== "null") 
+const HF_TOKEN = (process.env.HF_TOKEN && process.env.HF_TOKEN !== "undefined" && process.env.HF_TOKEN !== "null") 
     ? process.env.HF_TOKEN 
-    : "";
+    : ""; // Set HF_TOKEN environment variable
   
   if (!base64Data) return null;
   try {

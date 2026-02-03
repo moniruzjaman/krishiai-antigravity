@@ -1,7 +1,8 @@
 """
 Google Gemini AI Service Integration
 """
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from app.config import settings
 from typing import Dict, List, Optional, Any
 import logging
@@ -10,8 +11,8 @@ import base64
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-genai.configure(api_key=settings.GEMINI_API_KEY)
+# Initialize Gemini client
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
 class GeminiService:
@@ -22,9 +23,6 @@ class GeminiService:
         self.model = genai.GenerativeModel(
             model_name=self.model_name,
             tools=[{"google_search_retrieval": {}}]
-        )
-        self.model_no_search = genai.GenerativeModel(
-            model_name=self.model_name
         )
     
     async def analyze_crop_image(
@@ -63,20 +61,33 @@ Language: {'Bangla' if lang == 'bn' else 'English'}. Use Google Search tool to v
             prompt = f"Crop: {crop_family or 'General Agricultural Specimen'}. Query: {query or 'Identify health condition'}."
             
             # Generate content with image
-            response = self.model_no_search.generate_content(
+            response = self.model.generate_content(
                 [prompt, {"mime_type": "image/jpeg", "data": image_data}],
                 generation_config=genai.GenerationConfig(
                     temperature=0.4,
                     top_p=0.95,
                     top_k=40,
                     max_output_tokens=2048,
-                ),
-                safety_settings=[
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                ]
+                    system_instruction=system_instruction,
+                    safety_settings=[
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_HARASSMENT",
+                            threshold="BLOCK_NONE"
+                        ),
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_HATE_SPEECH",
+                            threshold="BLOCK_NONE"
+                        ),
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                            threshold="BLOCK_NONE"
+                        ),
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                            threshold="BLOCK_NONE"
+                        ),
+                    ]
+                )
             )
             
             if not response.candidates or not response.candidates[0].content.parts:
@@ -149,7 +160,10 @@ Use BARC FRG 2024 standards.
 Language: {lang}.
 Provide specific dosages for Urea, TSP, MOP, and other fertilizers."""
             
-            response = self.model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
             return response.text
             
         except Exception as e:
@@ -178,7 +192,7 @@ Strictly return a JSON object with these exact keys:
 upazila, district, temp, condition, description, humidity, wind_speed, rain_probability, disease_risk. 
 Lang: {'Bangla' if lang == 'bn' else 'English'}"""
             
-            response = self.model_no_search.generate_content(
+            response = self.model.generate_content(
                 prompt,
                 generation_config=genai.GenerationConfig(
                     response_mime_type="application/json"
@@ -229,73 +243,80 @@ Lang: {'Bangla' if lang == 'bn' else 'English'}"""
         except Exception as e:
             logger.error(f"Error searching agricultural info: {e}")
             raise
-
-    async def generate_speech(self, text: str) -> str:
-        """Generate speech using Gemini"""
+    
+    async def generate_cabi_scenario(
+        self,
+        mode: str,
+        input_data: Any,
+        lang: str = "bn"
+    ) -> Dict[str, Any]:
+        """
+        Generate CABI-style diagnostic scenario
+        """
         try:
-            response = self.model_no_search.generate_content(
-                text[:1000],
+            prompt = ""
+            data_context = ""
+
+            if mode == 'analysis':
+                analysis = input_data
+                data_context = f"""REAL CASE CONTEXT:
+Diagnosis: {analysis.get('diagnosis')}
+Crop: {analysis.get('crop') or 'Unknown'}
+Visible Symptoms: {analysis.get('technical_summary') or analysis.get('technicalSummary')}
+Image: (Provided in separate channel)
+"""
+                prompt = "Create a CABI-style diagnostic quiz question based on this REAL diagnosis. The user has just analyzed this crop. Challenge them to verify the diagnosis."
+            else:
+                data_context = f"""SIMULATION CONTEXT:
+Topic: {input_data}
+"""
+                prompt = f"""Generate a HYPOTHETICAL field scenario about {input_data}.
+1. Describe visual symptoms typical for this problem.
+2. Create a realistic "Farmer's History" (e.g., "Leaves turned yellow after rain").
+3. Select a suitable Unsplash Image URL representing this problem (or a generic crop field if specific one not found).
+"""
+
+            system_instruction = f"""Role: Senior CABI Plant Doctor Trainer.
+Task: Create a single interactive Diagnostic Scenario ({mode}).
+
+STRICT JSON OUTPUT FORMAT (CABIScenario):
+{{
+  "id": "scenario_unique_id",
+  "mode": "{mode}",
+  "imageUrl": "https://images.unsplash.com/photo-...", (For 'analysis' mode, use placeholder "USER_UPLOADED_IMAGE")
+  "crop": "Name of crop",
+  "symptoms": ["List of visual symptoms"],
+  "history": "Brief field history provided by farmer",
+  "question": "The diagnostic question",
+  "options": [
+    {{ "label": "Option A (Diagnosis)", "isCorrect": boolean, "feedback": "Why right/wrong (CABI logic)" }}
+  ],
+  "explanation": "Deduction logic using Elimination Method",
+  "cabiReference": "Relevant CABI Protocol/Code"
+}}
+
+Language: {'Bangla' if lang == 'bn' else 'English'}.
+"""
+            model = genai.GenerativeModel(
+                model_name=self.model_name,
+                system_instruction=system_instruction
+            )
+
+            response = model.generate_content(
+                data_context + "\n" + prompt,
                 generation_config=genai.GenerationConfig(
-                    response_modalities=["AUDIO"],
+                    response_mime_type="application/json"
                 )
             )
-            # Find the audio part
-            for part in response.candidates[0].content.parts:
-                if hasattr(part, 'inline_data'):
-                    return base64.b64encode(part.inline_data.data).decode('utf-8')
-            raise Exception("No audio data in response")
-        except Exception as e:
-            logger.error(f"Error generating speech: {e}")
-            raise
 
-    async def generate_image(self, prompt: str) -> str:
-        """Generate image using Imagen via Gemini"""
-        try:
-            # Use Gemini to generate image description, then return placeholder
-            # Image generation model not available, using fallback
-            logger.info("Image generation using placeholder due to model unavailability")
-            return "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?q=80&w=1000&auto=format&fit=crop"
-        except Exception as e:
-            logger.error(f"Error generating image: {e}")
-            # Graceful fallback to a relevant agricultural image
-            return "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?q=80&w=1000&auto=format&fit=crop"
-
-    async def get_precision_parameters(self, image_base64: str, mime_type: str, crop_family: str, lang: str) -> List[Dict[str, Any]]:
-        """Get precision parameters for analysis"""
-        try:
-            prompt = f"Audit fields needed for precision identification of {crop_family}. JSON list. Lang: {lang}."
-            response = self.model_no_search.generate_content(
-                [prompt, {"mime_type": mime_type, "data": base64.b64decode(image_base64)}],
-                generation_config=genai.GenerationConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            logger.error(f"Error getting precision parameters: {e}")
-            return []
-
-    async def perform_deep_audit(self, image_base64: str, mime_type: str, crop_family: str, dynamic_data: Dict[str, Any], lang: str, weather: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Perform deep scientific audit"""
-        try:
-            prompt = f"Deep Scientific Audit: {crop_family}. Context: {json.dumps(dynamic_data)}. Weather: {json.dumps(weather) if weather else 'Unknown'}. Lang: {lang}."
-            response = self.model_no_search.generate_content(
-                [prompt, {"mime_type": mime_type, "data": base64.b64decode(image_base64)}]
-            )
-            text = response.text
+            scenario = json.loads(response.text)
             
-            diagnosis = self._extract_field(text, "DIAGNOSIS") or "Deep Diagnostic Report"
-            category = self._extract_field(text, "CATEGORY") or "Other"
-            confidence = int(self._extract_field(text, "CONFIDENCE", r"(\d+)") or "90")
-            advisory = self._extract_field(text, "MANAGEMENT PROTOCOL", multiline=True) or ""
-            
-            return {
-                "diagnosis": diagnosis,
-                "category": category,
-                "confidence": confidence,
-                "advisory": advisory,
-                "full_text": text,
-                "official_source": "Verified Scientific Audit (AIS/BARC)",
-                "grounding_chunks": []
-            }
+            # If analysis mode, placeholder for imageUrl
+            if mode == 'analysis':
+                 scenario['imageUrl'] = "USER_UPLOADED_IMAGE"
+
+            return scenario
+
         except Exception as e:
             logger.error(f"Error performing deep audit: {e}")
             raise
