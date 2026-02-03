@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Hybrid Multi-Model AI Chat Application"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <title>Hybrid AI Chat</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+I've created all the necessary files for both the frontend and backend. Now, here are the steps you need to take to get this running:
+
+### **Your Action Plan**
+
+#### **1. Get Your API Keys**
+
+You need to get API keys from each provider. Go to their respective websites and sign up for a free account/tier:
+
+*   **Google AI Studio (Gemini):**
+    *   Visit `aistudio.google.com`.
+    *   Create a project and generate an API key. You'll often get generous free limits for experimentation.
+*   **OpenAI (ChatGPT):**
+    *   Visit `platform.openai.com`.
+    *   Sign up and create an API key. You'll get some initial free credits, but be mindful of usage.
+*   **Hugging Face:**
+    *   Visit `huggingface.co`.
+    *   Go to your account settings and generate an API token.
+
+#### **2. Configure the Backend**
+
+1.  Navigate to the backend directory: `cd C:\Users\SERVICING GURU\Desktop\krishiai\backend`
+2.  Create the `.env` file (as I explained earlier).
+3.  Open the `.env` file and paste your API keys into it:
+
+    ```env
+    GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+    OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+    HF_API_KEY=YOUR_HUGGINGFACE_API_KEY
+    ```
+4.  Install the necessary Node.js packages: `npm install`
+5.  Start the backend server: `npm start`
+
+You should see the message: `Backend server listening on port 3001`.
+
+#### **3. Run the Frontend**
+
+1.  Open a **new terminal** window.
+2.  Navigate to the frontend directory: `cd C:\Users\SERVICING GURU\Desktop\krishiai\frontend`
+3.  Install the necessary React packages: `npm install`
+4.  Start the development server: `npm start`
+
+Your browser should automatically open to `http://localhost:3000`, and you'll see the "Hybrid Multi-Model AI Chat" interface.
+
+#### **4. Use the Application**
+
+*   Select a model from the dropdown.
+*   Type a prompt and optionally attach an image (this will only work with the Gemini model selected).
+*   Click "Send" and you should receive a response from the chosen AI service!
+
+### **Next Steps (Deployment)**
+
+To make this publicly accessible, you would deploy the backend to a serverless platform (like Vercel or Netlify) and the frontend to a static site host (also Vercel/Netlify). You would then update the `BACKEND_URL` in the frontend's `App.js` to point to your deployed backend's URL. This setup handles everything we discussed and provides a solid foundation for your hybrid multi-modal AI app.

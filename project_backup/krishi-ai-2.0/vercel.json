@@ -1,0 +1,20 @@
+{
+<<<<<<< HEAD
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+=======
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/dist/$1"
+    }
+>>>>>>> 5f8f175f5c71d388e39098974d11e6e0cf41f519
+  ]
+}
